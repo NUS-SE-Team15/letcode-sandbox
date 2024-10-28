@@ -41,7 +41,13 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
         System.out.println(compileFileExecuteMessage);
 
         // 3. 执行代码，得到输出结果
-        List<ExecuteMessage> executeMessageList = runFile(userCodeFile, inputList);
+        List<ExecuteMessage> executeMessageList = new ArrayList<>();
+        if (compileFileExecuteMessage.getExitValue() == 0) {
+            executeMessageList = runFile(userCodeFile, inputList);
+        } else {
+            executeMessageList.add(compileFileExecuteMessage);
+        }
+
 
 //        4. 收集整理输出结果
         ExecuteCodeResponse outputResponse = getOutputResponse(executeMessageList);
@@ -86,7 +92,8 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
             Process compileProcess = Runtime.getRuntime().exec(compileCmd);
             ExecuteMessage executeMessage = ProcessUtils.runProcessAndGetMessage(compileProcess, "编译");
             if (executeMessage.getExitValue() != 0) {
-                throw new RuntimeException("编译错误");
+                System.out.println("编译错误");
+//                throw new RuntimeException("编译错误");
             }
             return executeMessage;
         } catch (Exception e) {
@@ -140,12 +147,14 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
         List<String> outputList = new ArrayList<>();
         // 取用时最大值，便于判断是否超时
         long maxTime = 0;
+        JudgeInfo judgeInfo = new JudgeInfo();
         for (ExecuteMessage executeMessage : executeMessageList) {
             String errorMessage = executeMessage.getErrorMessage();
             if (StrUtil.isNotBlank(errorMessage)) {
                 executeCodeResponse.setMessage(errorMessage);
                 // 用户提交的代码执行中存在错误
                 executeCodeResponse.setStatus(3);
+                judgeInfo.setMessage(errorMessage);
                 break;
             }
             outputList.add(executeMessage.getMessage());
@@ -159,7 +168,8 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
             executeCodeResponse.setStatus(1);
         }
         executeCodeResponse.setOutputList(outputList);
-        JudgeInfo judgeInfo = new JudgeInfo();
+
+
         judgeInfo.setTime(maxTime);
         // 要借助第三方库来获取内存占用，非常麻烦，此处不做实现
 //        judgeInfo.setMemory();
